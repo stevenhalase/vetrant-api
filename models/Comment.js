@@ -4,7 +4,7 @@ const Schema   = mongoose.Schema;
 const CommentSchema = new Schema({
 	date : Number,
   content : String,
-  image: String,
+  image: { type: Schema.Types.ObjectId, ref: 'Image' },
 	user : { type: Schema.Types.ObjectId, ref: 'User' },
 	post : { type: Schema.Types.ObjectId, ref: 'Post' },
 });
@@ -23,5 +23,17 @@ CommentSchema.virtual('dislikes', {
 
 CommentSchema.set('toObject', { virtuals: true });
 CommentSchema.set('toJSON', { virtuals: true });
+
+const autoPopulate = function(next) {
+  this.populate({ path: "user", model: "User" });
+  this.populate({ path: "image", model: "Image" });
+  this.populate({ path: "likes", model: "Like" });
+  this.populate({ path: "dislikes", model: "Dislike" });
+  next();
+};
+
+CommentSchema
+  .pre('findOne', autoPopulate)
+  .pre('find', autoPopulate);
 
 module.exports = mongoose.model('Comment', CommentSchema);

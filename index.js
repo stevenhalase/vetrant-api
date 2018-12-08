@@ -7,6 +7,7 @@ const salt = bcrypt.genSaltSync(10);
 
 const User = require('./models/User');
 const Avatar = require('./models/Avatar');
+const Image = require('./models/Image');
 const Post = require('./models/Post');
 const Comment = require('./models/Comment');
 const Like = require('./models/Like');
@@ -70,7 +71,14 @@ const init = async () => {
 						password: bcrypt.hashSync(password, salt)
 					});
 
-					return newUser.save();
+					return newUser.save().then(async (docs) => {
+						const options = {
+							path: "image",
+							model: "Avatar",
+						};
+
+						return await User.populate(docs, options);
+					});
 				},
 				validate: {
 					payload: {
@@ -93,15 +101,7 @@ const init = async () => {
         handler: async (req, reply) => {
           const { username, password } = req.payload;
           
-					const user = await User.findOne({ username })
-						.exec().then(async (docs) => {
-								const options = {
-									path: "image",
-									model: "Avatar",
-								};
-
-								return await User.populate(docs, options);
-							})
+					const user = await User.findOne({ username });
 
           if (!user){
             return { message: 'Failed to login user' };
@@ -143,7 +143,7 @@ const init = async () => {
 					}
 					
           try {
-						var base64data = new Buffer(file, 'binary').toString('base64');
+						const base64data = new Buffer(file, 'binary').toString('base64');
 
 						const newAvatar = new Avatar({
 							data: base64data,
@@ -154,15 +154,14 @@ const init = async () => {
 
 						const savedAvatar = await newAvatar.save();
 						user.image = savedAvatar._id;
-						return user.save()
-							.then(async (docs) => {
-								const options = {
-									path: "image",
-									model: "Avatar",
-								};
+						return user.save().then(async (docs) => {
+							const options = {
+								path: "image",
+								model: "Avatar",
+							};
 
-								return await User.populate(docs, options);
-							})
+							return await User.populate(docs, options);
+						});
 					} catch (error) {
 						console.log(error);
 						return error;
@@ -171,6 +170,244 @@ const init = async () => {
 				payload: {
 					output: 'data',
 				}
+			}
+		},
+		{  
+			method: 'POST',
+			path: '/api/v1/post/',
+			config: {
+				description: 'Create post.',
+        tags: ['api', 'v1', 'post'],
+				handler: async (req, reply) => {
+          const {
+						user,
+						channel,
+						title,
+						content,
+						file,
+						fileName,
+						fileType
+					} = req.payload;
+					
+          try {
+						const post = new Post({
+							user,
+							channel,
+							content,
+							title,
+							date: new Date().getTime()
+						})
+
+						if (file) {
+							const base64data = new Buffer(file, 'binary').toString('base64');
+							const image = new Image({
+								user,
+								data: base64data,
+								type: fileType,
+								name: fileName
+							});
+
+							const savedImage = await image.save();
+							post.image = savedImage._id;
+						}
+						
+						return post.save();
+					} catch (error) {
+						console.log(error);
+						return error;
+					}
+				},
+				payload: {
+					output: 'data',
+				}
+			}
+		},
+		{
+			method: 'POST',
+			path: '/api/v1/comment/',
+			config: {
+				description: 'Create comment.',
+        tags: ['api', 'v1', 'comment'],
+				handler: async (req, reply) => {
+          const {
+						user,
+						post,
+						content,
+						file,
+						fileName,
+						fileType
+					} = req.payload;
+					
+          try {
+						const comment = new Comment({
+							user,
+							post,
+							content,
+							date: new Date().getTime()
+						})
+
+						if (file) {
+							const base64data = new Buffer(file, 'binary').toString('base64');
+							const image = new Image({
+								user,
+								data: base64data,
+								type: fileType,
+								name: fileName
+							});
+
+							const savedImage = await image.save();
+							comment.image = savedImage._id;
+						}
+						
+						return comment.save().then(async (docs) => {
+							let popComment = await Comment.populate(docs, { path: "user", model: "User" });
+							popComment = await Comment.populate(docs, { path: "image", model: "Image" });
+							popComment = await Comment.populate(docs, { path: "likes", model: "Like" });
+							popComment = await Comment.populate(docs, { path: "dislikes", model: "Dislike" });
+							return popComment;
+						});
+					} catch (error) {
+						console.log(error);
+						return error;
+					}
+				},
+				payload: {
+					output: 'data',
+				}
+			}
+		},
+		{
+			method: 'POST',
+			path: '/api/v1/like/',
+			config: {
+				description: 'Create like.',
+        tags: ['api', 'v1', 'like'],
+				handler: async (req, reply) => {
+          const {
+						user,
+						post,
+						comment
+					} = req.payload;
+					
+          try {
+						const like = new Like({
+							user,
+							post,
+							comment,
+							date: new Date().getTime()
+						})
+						
+						return like.save();
+					} catch (error) {
+						console.log(error);
+						return error;
+					}
+				},
+        validate: {
+          payload: {
+            user: Joi.string()
+                .required()
+                .description('User Id'),
+            post: Joi.string()
+                .description('Post Id'),
+						comment: Joi.string()
+								.description('Comment Id')
+          }
+        }
+			}
+		},
+		{
+			method: 'POST',
+			path: '/api/v1/dislike/',
+			config: {
+				description: 'Create dislike.',
+        tags: ['api', 'v1', 'dislike'],
+				handler: async (req, reply) => {
+          const {
+						user,
+						post,
+						comment
+					} = req.payload;
+					
+          try {
+						const dislike = new Dislike({
+							user,
+							post,
+							comment,
+							date: new Date().getTime()
+						})
+						
+						return dislike.save();
+					} catch (error) {
+						console.log(error);
+						return error;
+					}
+				},
+        validate: {
+          payload: {
+            user: Joi.string()
+                .required()
+                .description('User Id'),
+            post: Joi.string()
+                .description('Post Id'),
+						comment: Joi.string()
+								.description('Comment Id')
+          }
+        }
+			}
+		},
+		{
+			method: 'GET',
+			path: '/api/v1/channel/',
+			config: {
+				description: 'Get all channels.',
+				tags: ['api', 'v1', 'channel'],
+				handler: (req, reply) => {
+					return Channel.find();
+				}
+			}
+		},
+		{
+			method: 'POST',
+			path: '/api/v1/channel/',
+			config: {
+				description: 'Create channel.',
+				tags: ['api', 'v1', 'channel'],
+				handler: (req, reply) => {
+					const { name } = req.payload;
+
+					const newChannel = new Channel({
+						name
+					});
+
+					return newChannel.save();
+				},
+				validate: {
+					payload: {
+						name: Joi.string()
+								.required()
+								.description('Channel name')
+					}
+				}
+			}
+		},
+		{
+			method: 'GET',
+			path: '/api/v1/post/channel/{channelId}',
+			config: {
+				description: 'Get all channel posts.',
+				tags: ['api', 'v1', 'channel'],
+				handler: (req, reply) => {
+					const { channelId } = req.params;
+					return Post.find({ channel: channelId });
+				},
+        validate: {
+          params: {
+						channelId: Joi.string()
+											.required()
+											.description('Username')
+					}
+        }
 			}
 		}
 	]);

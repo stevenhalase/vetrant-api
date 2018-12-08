@@ -3,10 +3,11 @@ const Schema = mongoose.Schema;
 
 const PostSchema = new Schema({
   title: String,
-  image: String,
+  image: { type: Schema.Types.ObjectId, ref: 'Image' },
   content: String,
   date: Number,
-  user: { type: Schema.Types.ObjectId, ref: 'User' }
+  user: { type: Schema.Types.ObjectId, ref: 'User' },
+  channel: { type: Schema.Types.ObjectId, ref: 'Channel' }
 });
 
 PostSchema.virtual('likes', {
@@ -29,5 +30,18 @@ PostSchema.virtual('comments', {
 
 PostSchema.set('toObject', { virtuals: true });
 PostSchema.set('toJSON', { virtuals: true });
+
+const autoPopulate = function(next) {
+  this.populate({ path: "user", model: "User" });
+  this.populate({ path: "image", model: "Image" });
+  this.populate({ path: "comments", model: "Comment" });
+  this.populate({ path: "likes", model: "Like" });
+  this.populate({ path: "dislikes", model: "Dislike" });
+  next();
+};
+
+PostSchema
+  .pre('findOne', autoPopulate)
+  .pre('find', autoPopulate);
 
 module.exports = mongoose.model('Post', PostSchema);
