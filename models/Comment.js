@@ -5,6 +5,7 @@ const CommentSchema = new Schema({
 	date : Number,
   content : String,
   image: { type: Schema.Types.ObjectId, ref: 'Image' },
+  giphyUrl: String,
 	user : { type: Schema.Types.ObjectId, ref: 'User' },
 	post : { type: Schema.Types.ObjectId, ref: 'Post' },
 });
