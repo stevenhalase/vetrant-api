@@ -52,7 +52,7 @@ module.exports = [
         params: {
           channelId: Joi.string()
                     .required()
-                    .description('Username')
+                    .description('Channel Id')
         }
       }
     }

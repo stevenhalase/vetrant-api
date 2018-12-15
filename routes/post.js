@@ -193,4 +193,42 @@ module.exports = [
       }
     }
   },
+  {
+    method: 'GET',
+    path: '/api/v1/post/user/{userId}',
+    config: {
+      description: 'Get all user posts.',
+      tags: ['api', 'v1', 'post'],
+      handler: (req, reply) => {
+        const { userId } = req.params;
+        return Post.find({ user: userId });
+      },
+      validate: {
+        params: {
+          userId: Joi.string()
+                    .required()
+                    .description('User Id')
+        }
+      }
+    }
+  },
+  {
+    method: 'GET',
+    path: '/api/v1/comment/user/{userId}',
+    config: {
+      description: 'Get all user comments.',
+      tags: ['api', 'v1', 'comment'],
+      handler: (req, reply) => {
+        const { userId } = req.params;
+        return Comment.find({ user: userId });
+      },
+      validate: {
+        params: {
+          userId: Joi.string()
+                    .required()
+                    .description('User Id')
+        }
+      }
+    }
+  }
 ]
